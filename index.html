@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang='en'>
+
+<head>
+	<meta charset='utf-8' />
+	<title>Prueba 1</title>
+	<script src='js/d3.js' type='text/javascript'></script>
+	<script src='js/crossfilter.js' type='text/javascript'></script>
+	<script src='js/dc.js' type='text/javascript'></script>
+	<script src='js/jquery-2.1.1.js' type='text/javascript'></script>
+	<script src='js/bootstrap.min.js' type='text/javascript'></script>
+
+	<link href='css/bootstrap.css' rel='stylesheet' type='text/css'>
+	<link href='css/dc.css' rel='stylesheet' type='text/css'>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <h1>Prueba base dc.js</h1>
+    <div class="row-fluid">
+      <div id="data-count" class="dc-data-count">
+           <span class="filter-count"></span> registros seleccionados de un total de <span class="total-count"></span>
+      </div>
+    </div>
+    <br><br>
+    <div class="row-fluid">
+      
+      <div id="area-chart" class="col-md-4">
+        <h3> Fecha <a class="reset" href="javascript:fechachart.filterAll();dc.redrawAll();" style="display: none;"> borrar </a> </h3>
+      </div>
+
+      <div id="donut-chart" class="col-md-4">
+      <h3> Nivel <a class="reset" href="javascript:niveleschart.filterAll();dc.redrawAll();" style="display: none;"> borrar </a> </h3>
+      </div>
+
+      <div id="bar-chart" class="col-md-4">
+        <h3> Histograma <a class="reset" href="javascript:histchart.filterAll();dc.redrawAll();" style="display: none;"> borrar </a> </h3>
+      </div>
+
+    </div>
+    <div class='row-fluid'>
+    <div class='span12'>
+          <table class='table table-hover' id='dc-table-graph'>
+            <thead>
+              <tr class='header'>
+                <th>Equipo</th>
+                <th>Nivel</th>
+                <th>Delay</th>
+                <th>GPS</th>
+                <th>Lat</th>
+                <th>Long</th>
+              </tr>
+            </thead>
+          </table>
+      </div>
+    </div>
+  </div>
+</body>
+
+<script type="text/javascript">
+
+var timeFormat = d3.time.format(' %Y-%m-%d %H:%M:%S');
+//var timeFormat = d3.time.format.iso;
+var niveleschart = dc.pieChart("#donut-chart")
+var histchart = dc.barChart("#bar-chart")
+var fechachart = dc.lineChart("#area-chart")
+
+
+
+
+d3.csv("dataprueba.csv", function(d) {
+  var data = crossfilter(d);
+  var all = data.groupAll();
+
+  var hours = data.dimension(function(d){
+    return d3.time.second(timeFormat.parse(d.gps));
+  });
+  var totalByHour = hours.group().reduceSum(function(d){
+      return d.delay;
+  });//*/
+
+  var levels = data.dimension(function(d){return d.level;});
+  var totalBylevel = levels.group().reduceCount();
+
+  var delays = data.dimension(function(d){return d.delay;});
+  var delayByQuantity = delays.group();
+  
+  niveleschart.width(250)
+    .height(250)
+    .radius(125)
+    .innerRadius(50)
+    .dimension(levels)
+    .group(totalBylevel);
+
+  histchart.width(500)
+    .height(250)
+    .dimension(delays)
+    .group(delayByQuantity)
+    .x(d3.scale.linear().domain([0, 100]))
+    //.y(d3.scale.linear().domain([0, 260]))
+    .elasticY(true)
+    .centerBar(true);
+
+  fechachart.width(500)
+    .height(250)
+    .dimension(hours)
+    .group(totalByHour)
+    .x(d3.time.scale().domain([timeFormat.parse(" 2014-05-08 23:59:00"), timeFormat.parse(" 2014-05-09 04:50:00")]))
+    //.y(d3.scale.linear().domain([0, 60]))
+    .elasticY(true)
+    .xUnits(d3.time.hours)
+    .renderArea(true)
+    .xAxis().ticks(5);//*/
+
+  dc.dataTable("#dc-table-graph")
+    .width(960)
+    .height(800)
+    .dimension(hours)
+    .group(function(d) { return d.level })
+    .size(10)
+    .columns([
+      function(d) { return d.id; },
+      function(d) { return d.level; },
+      function(d) { return d.delay; },
+      function(d) { return d.gps; },
+      function(d) { return d.lat; },
+      function(d) { return d.lon; },
+    ])
+    .sortBy(function(d){ return d.dtg; })
+    .order(d3.ascending);
+
+  dc.dataCount(".dc-data-count")
+        .dimension(data)
+        .group(all);
+
+
+  dc.renderAll();
+  
+});
+
+</script>
+
+</html>
